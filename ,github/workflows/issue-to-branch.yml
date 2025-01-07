@@ -1,0 +1,45 @@
+name: Automate Branch Creation
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create_branch_and_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch from issue
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # Formatar o nome da branch (remover espaços e caracteres especiais)
+          BRANCH_NAME="issue-${ISSUE_NUMBER}-$(echo $ISSUE_TITLE | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')"
+          
+          # Criar e empurrar a nova branch
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+          
+          echo "Branch $BRANCH_NAME criada."
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          branch: ${{ steps.create_branch_and_pr.outputs.branch }}
+          title: "Resolve Issue #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
+          body: "Este pull request resolve a issue #${{ github.event.issue.number }}."
+
+      - name: Close Issue
+        uses: peter-evans/close-issue@v2
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          comment: "Uma branch foi criada e um pull request está aberto para resolver esta issue."
