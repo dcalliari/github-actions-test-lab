@@ -11,4 +11,9 @@ jobs:
     steps:
       - name: Set up Git
         run: |
-          git clone https://github.com/dcalliari/github-actions-test-lab.git
+          cd tmob/tschool/web
+          git fetch origin main
+          nvm use 20
+          yarn
+          yarn build
+          pm2 restart tschool-web
