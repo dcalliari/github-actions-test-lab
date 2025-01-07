@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Set up Git
         run: |
-          cd ../tmob/tschool/web
+          cd ~/tmob/tschool/web
           git fetch origin main
           nvm use 20
           yarn
