@@ -13,8 +13,8 @@ jobs:
     timeout-minutes: 30
 
     env:
-      APP_DIR: /web
-      APP_NAME: test-app
+      APP_DIR: ~/tmob/tschool/web
+      APP_NAME: tschool-web
       REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
 
     steps:
