@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 30
 
     env:
+      APP_DIR: /web
       APP_NAME: test-app
       REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
 
@@ -46,6 +47,7 @@ jobs:
 
       - name: Deploy application
         run: |
+          cd ${{ env.APP_DIR }} && \
           git fetch origin tag ${{ steps.get-tag.outputs.latest_tag }} && \
           git checkout ${{ steps.get-tag.outputs.latest_tag }} && \
           yarn && \
