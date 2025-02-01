@@ -48,7 +48,7 @@ jobs:
       - name: Deploy application
         run: |
           cd ${{ env.APP_DIR }} && \
-          git fetch origin tag ${{ steps.get-tag.outputs.latest_tag }} && \
+          git fetch private tag ${{ steps.get-tag.outputs.latest_tag }} && \
           git checkout ${{ steps.get-tag.outputs.latest_tag }} && \
           yarn && \
           yarn prisma generate && \
@@ -64,15 +64,3 @@ jobs:
         run: |
           yarn cache clean
           rm -rf node_modules/.cache
-
-      - name: Rollback on failure
-        if: failure()
-        run: |
-          sudo su -c "
-            cd ${{ env.APP_DIR }} && \
-            git checkout HEAD~1 && \
-            yarn && \
-            yarn prisma generate && \
-            yarn build && \
-            pm2 restart ${{ env.APP_NAME }}
-          "
