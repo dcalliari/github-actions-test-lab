@@ -1,19 +1,78 @@
-name: Automate Branch Creation
+name: Deploy Application
 
 on:
-  issues:
-    types: [opened]
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
 
 jobs:
-  create_branch_and_pr:
+  deploy:
     runs-on: self-hosted
+    timeout-minutes: 30
+
+    env:
+      APP_DIR: /applications/test_app
+      APP_NAME: test-app
+      REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
 
     steps:
-      - name: Set up Git
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get the latest tag
+        id: get-tag
+        run: echo "latest_tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - name: Validate tag
         run: |
-          cd ~/tmob/tschool/web
-          git fetch origin main
-          nvm use 20
-          yarn
+          if [ -z "${{ steps.get-tag.outputs.latest_tag }}" ]; then
+            echo "No tag found. Exiting."
+            exit 1
+          fi
+
+      - name: Print the latest tag
+        run: echo "The latest tag is ${{ steps.get-tag.outputs.latest_tag }}"
+
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: yarn-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            yarn-${{ runner.os }}-
+
+      - name: Deploy application
+        run: |
+          cd ${{ env.APP_DIR }} && \
+          git fetch origin tag ${{ steps.get-tag.outputs.latest_tag }} && \
+          git checkout ${{ steps.get-tag.outputs.latest_tag }} && \
+          yarn && \
+          yarn prisma generate && \
           yarn build
-          pm2 restart tschool-web
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+
+      - name: Restart application with sudo
+        run: |
+          sudo pm2 restart ${{ env.APP_NAME }}
+
+      - name: Clean up
+        run: |
+          yarn cache clean
+          rm -rf node_modules/.cache
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          sudo su -c "
+            cd ${{ env.APP_DIR }} && \
+            git checkout HEAD~1 && \
+            yarn && \
+            yarn prisma generate && \
+            yarn build && \
+            pm2 restart ${{ env.APP_NAME }}
+          "
